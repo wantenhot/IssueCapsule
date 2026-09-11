@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2024"
 description = "Turn works on my machine into a reproducible bug"
 license = "MIT"
+repository = "https://github.com/wantenhot/IssueCapsule"
+readme = "README.md"
+keywords = ["bug-reproduction", "debugging", "docker", "cli", "github"]
+categories = ["command-line-utilities", "development-tools::debugging"]
 
 [[bin]]
 name = "issuecap"
