@@ -30,8 +30,7 @@ impl IssueRef {
 #[derive(Debug, Deserialize)]
 pub struct IssueInfo {
     pub title: String,
-    #[serde(rename = "body")]
-    pub _body: Option<String>,
+    pub body: Option<String>,
 }
 
 pub fn parse_issue_url(url: &str) -> Result<IssueRef> {
@@ -59,7 +58,7 @@ pub fn fetch_issue(issue: &IssueRef) -> Result<IssueInfo> {
         .context("Failed to create GitHub client.")?;
     let response = client
         .get(url)
-        .header(reqwest::header::USER_AGENT, "IssueCapsule/0.1")
+        .header(reqwest::header::USER_AGENT, "IssueCapsule/0.2")
         .header(reqwest::header::ACCEPT, "application/vnd.github+json")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()

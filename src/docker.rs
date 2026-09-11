@@ -31,29 +31,26 @@ struct DockerImage(String);
 
 impl Drop for DockerImage {
     fn drop(&mut self) {
-        let _ = Command::new("docker")
-            .args(["image", "rm"])
-            .arg(&self.0)
-            .output();
+        let _ = command().args(["image", "rm"]).arg(&self.0).output();
     }
 }
 
 pub fn is_available() -> bool {
-    Command::new("docker")
+    command()
         .arg("--version")
         .output()
         .is_ok_and(|output| output.status.success())
 }
 
 pub fn daemon_available() -> bool {
-    Command::new("docker")
+    command()
         .arg("info")
         .output()
         .is_ok_and(|output| output.status.success())
 }
 
 pub fn ensure_available() -> Result<()> {
-    match Command::new("docker").arg("--version").output() {
+    match command().arg("--version").output() {
         Ok(output) if output.status.success() => {}
         Ok(_) => bail!("Docker is required.\nRun `issuecap doctor`."),
         Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -74,8 +71,8 @@ pub fn execute(repository: &Path, capsule: &Capsule) -> Result<Execution> {
     let image = build(repository, capsule)?;
     println!("✓ Docker image ready");
     println!("\nRunning:\n\n{}\n\n---\n", capsule.reproduce.command);
-    let output = Command::new("docker")
-        .args(["run", "--rm"])
+    let output = command()
+        .args(["run", "--rm", "--network", "none"])
         .arg(&image.0)
         .args(["sh", "-lc"])
         .arg(&capsule.reproduce.command)
@@ -91,7 +88,7 @@ fn build(repository: &Path, capsule: &Capsule) -> Result<DockerImage> {
     let contents = dockerfile_contents(capsule);
     fs::write(&dockerfile, contents).context("Failed to write temporary Dockerfile.")?;
 
-    let output = Command::new("docker")
+    let output = command()
         .args(["build", "--quiet", "--file"])
         .arg(&dockerfile)
         .arg(repository)
@@ -121,6 +118,15 @@ fn execution_from(output: Output) -> Execution {
         stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
         exit_code: output.status.code(),
     }
+}
+
+fn command() -> Command {
+    let mut command = Command::new("docker");
+    command
+        .env_remove("ISSUECAP_AI_API_KEY")
+        .env_remove("ISSUECAP_AI_BASE_URL")
+        .env_remove("ISSUECAP_AI_MODEL");
+    command
 }
 
 fn dockerfile_contents(capsule: &Capsule) -> String {

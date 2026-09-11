@@ -5,14 +5,14 @@ use std::process::Command;
 use anyhow::{Context, Result, bail};
 
 pub fn is_available() -> bool {
-    Command::new("git")
+    command()
         .arg("--version")
         .output()
         .is_ok_and(|output| output.status.success())
 }
 
 pub fn ensure_available() -> Result<()> {
-    match Command::new("git").arg("--version").output() {
+    match command().arg("--version").output() {
         Ok(output) if output.status.success() => Ok(()),
         Ok(_) => bail!("Git is required.\nRun `issuecap doctor`."),
         Err(error) if error.kind() == ErrorKind::NotFound => {
@@ -24,7 +24,7 @@ pub fn ensure_available() -> Result<()> {
 
 pub fn clone_repository(repository: &str, destination: &Path) -> Result<()> {
     ensure_available()?;
-    let output = Command::new("git")
+    let output = command()
         .args(["clone", "--quiet", repository])
         .arg(destination)
         .output()
@@ -38,7 +38,7 @@ pub fn clone_repository(repository: &str, destination: &Path) -> Result<()> {
 }
 
 pub fn checkout(repository: &Path, commit: &str) -> Result<()> {
-    let output = Command::new("git")
+    let output = command()
         .args(["-C"])
         .arg(repository)
         .args(["checkout", "--quiet", commit])
@@ -53,7 +53,7 @@ pub fn checkout(repository: &Path, commit: &str) -> Result<()> {
 }
 
 pub fn head_commit(repository: &Path) -> Result<String> {
-    let output = Command::new("git")
+    let output = command()
         .args(["-C"])
         .arg(repository)
         .args(["rev-parse", "HEAD"])
@@ -66,6 +66,15 @@ pub fn head_commit(repository: &Path) -> Result<String> {
 
     let commit = String::from_utf8(output.stdout).context("Git returned an invalid commit SHA.")?;
     Ok(commit.trim().to_owned())
+}
+
+fn command() -> Command {
+    let mut command = Command::new("git");
+    command
+        .env_remove("ISSUECAP_AI_API_KEY")
+        .env_remove("ISSUECAP_AI_BASE_URL")
+        .env_remove("ISSUECAP_AI_MODEL");
+    command
 }
 
 #[cfg(test)]

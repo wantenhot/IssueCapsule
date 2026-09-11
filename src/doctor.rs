@@ -35,7 +35,7 @@ fn github_available() -> bool {
         .and_then(|client| {
             client
                 .get("https://github.com")
-                .header(reqwest::header::USER_AGENT, "IssueCapsule/0.1")
+                .header(reqwest::header::USER_AGENT, "IssueCapsule/0.2")
                 .send()
         })
         .is_ok_and(|response| response.status().is_success())
