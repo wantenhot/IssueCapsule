@@ -2,152 +2,119 @@
 
 Turn "works on my machine" into a reproducible bug.
 
-```bash
-issuecap create \
-  https://github.com/foo/bar/issues/123 \
-  --run "python reproduce.py" \
-  --expect "IndexError"
-```
+IssueCapsule packages a public GitHub issue, an exact Git commit, and a
+reproduction command into a small, editable `.icap` file.
 
-```text
-BUG REPRODUCED ✓
+> [!IMPORTANT]
+> IssueCapsule requires Git and Docker. It currently supports public GitHub
+> repositories and Python projects only.
 
-Saved:
-issue-123.icap
-```
+## Install
 
-Then reproduce it again:
+With Rust installed:
 
 ```bash
-issuecap run issue-123.icap
+cargo install issuecapsule
 ```
 
-IssueCapsule does not fix bugs.
-
-It makes bugs reproducible.
-
-> [!WARNING]
-> A capsule contains a command that runs in Docker. Review `.icap` files from
-> untrusted sources before running them.
-
-## Requirements
-
-- Git
-- Docker with a running Linux container daemon
-- Network access to public GitHub repositories and Python package indexes
-
-IssueCapsule itself runs on Windows, Linux, and macOS. Reproduction always runs
-inside a Linux Docker container.
-
-## Install from source
-
-Install the Rust toolchain, then run:
-
-```bash
-cargo install --path .
-```
-
-Confirm that the required tools and network access are available:
+The installed command is `issuecap`. Check that Git, Docker, and GitHub are
+available:
 
 ```bash
 issuecap doctor
 ```
 
-## Create a capsule
+Prefer a ready-made binary? Download the archive for Windows, Linux, or macOS
+from [GitHub Releases](https://github.com/wantenhot/IssueCapsule/releases),
+extract it, and place `issuecap` (or `issuecap.exe`) somewhere in your `PATH`.
 
-Pass a public GitHub issue URL, a reproduction command, and the text that must
-appear in standard output or standard error:
+## Create a reproducible bug
+
+Give IssueCapsule three things:
+
+1. A public GitHub issue URL
+2. The command that reproduces the bug
+3. Text that should appear in stdout or stderr
 
 ```bash
-issuecap create \
-  https://github.com/foo/bar/issues/123 \
-  --run "python reproduce.py" \
-  --expect "IndexError"
+issuecap create https://github.com/foo/bar/issues/123 --run "python reproduce.py" --expect "IndexError"
 ```
 
-IssueCapsule fetches the issue metadata, clones the repository at its default
-branch HEAD, detects its Python dependency file, builds an isolated Docker
-image, and runs the command. It saves `issue-123.icap` only when the expected
-text appears.
+When the error is found, IssueCapsule saves `issue-123.icap`:
 
-Dependency installation follows this fixed order:
+```text
+BUG REPRODUCED ✓
+Saved:
+issue-123.icap
+```
 
-1. `requirements.txt` → `pip install -r requirements.txt`
-2. `pyproject.toml` → `pip install .`
-3. Neither file → no dependency installation
-
-The Docker image is `python:3.12-slim` in v0.1.
-
-## Run or verify a capsule
-
-Run the pinned repository commit and print its output:
+Share that file with someone else. They can reproduce the same bug with:
 
 ```bash
 issuecap run issue-123.icap
 ```
 
-Run it and check the recorded expected error:
+Or verify that the expected error still occurs:
 
 ```bash
 issuecap verify issue-123.icap
 ```
 
-`verify` exits with code `0` and prints `BUG REPRODUCED ✓` when the expected
-text appears. Otherwise, it exits with code `1` and prints
-`BUG NOT REPRODUCED ✗`.
+`verify` exits with code `0` when the bug is reproduced and code `1` when it
+is not.
 
-## Capsule format
+## How it works
 
-An `.icap` file is editable TOML, not a compressed or binary format:
+IssueCapsule:
 
-```toml
-version = 1
+1. Fetches the GitHub issue
+2. Clones the repository at an exact commit
+3. Detects `requirements.txt` or `pyproject.toml`
+4. Builds a clean `python:3.12-slim` Docker image
+5. Runs your reproduction command
+6. Checks stdout and stderr for the expected text
 
-[issue]
-url = "https://github.com/foo/bar/issues/123"
-number = 123
-title = "Crash when input is empty"
+An `.icap` file is plain TOML. It is not compressed, uploaded, or stored in a
+database.
 
-[source]
-repository = "https://github.com/foo/bar.git"
-commit = "0123456789abcdef0123456789abcdef01234567"
+## Commands
 
-[environment]
-language = "python"
-docker_image = "python:3.12-slim"
-
-[install]
-strategy = "requirements"
-command = "pip install -r requirements.txt"
-
-[reproduce]
-command = "python reproduce.py"
-expected_error = "IndexError"
-```
+| Command | Purpose |
+| --- | --- |
+| `issuecap create URL --run CMD --expect TEXT` | Reproduce a bug and create a capsule |
+| `issuecap run FILE.icap` | Run a capsule and print its output |
+| `issuecap verify FILE.icap` | Check whether the recorded error still occurs |
+| `issuecap doctor` | Check Git, Docker, and GitHub access |
 
 ## Current limitations
 
-- GitHub only
-- Python only
+- Public GitHub repositories only
+- Python projects only
 - Docker required
-- Reproduction command must currently be provided manually
-- Public repositories only
-- `requirements.txt` and `pyproject.toml` are the only detected dependency files
+- Reproduction commands must be provided manually
+- Dependency detection is limited to `requirements.txt` and `pyproject.toml`
 
-IssueCapsule v0.1 does not analyze issue prose, infer reproduction steps, fix
-bugs, use AI, or upload source code and results to a service.
+IssueCapsule does not fix bugs. It makes bugs reproducible.
 
-## Develop
+> [!WARNING]
+> Capsules contain commands that run in Docker. Review `.icap` files from
+> untrusted sources before running them.
 
-Run the local quality checks:
+## Build from source
+
+```bash
+git clone https://github.com/wantenhot/IssueCapsule.git
+cd IssueCapsule
+cargo build --release
+```
+
+Run the project checks with:
 
 ```bash
 cargo fmt --check
 cargo clippy --all-targets --all-features -- -D warnings
 cargo test
 ```
-
-Docker integration is intentionally outside the default unit test suite.
 
 ## License
 
